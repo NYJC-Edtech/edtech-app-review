@@ -94,7 +94,7 @@ zero external dependencies (runs from `file://` by double-click) containing
 
 A second reviewer can open it, read any annotation, **add comments** and
 **update annotation status** (append-only comments; the editor shows the
-thread, a status dropdown and the colour palette). Two save actions:
+thread, a status dropdown and the annotation's severity). Two save actions:
 
 - **Save comments** — splices the annotations shown in the
   review into the embedded app's annotation block and downloads the updated
@@ -163,7 +163,7 @@ boundaries. The block sits immediately before `</body>`.
 ```json
 {
   "schema": 2,
-  "tool": "spa-code-review 0.5.3",
+  "tool": "spa-code-review 0.6.0",
   "seq": 7,
   "savedTs": 1769640000000,
   "app": { "sha256": "<sha256 of app file text minus the block>", "bytes": 115136 },
@@ -183,6 +183,7 @@ boundaries. The block sits immediately before `</body>`.
           "w": 220, "h": 64,           // rect/ellipse/text only (text: measured callout box)
           "x2": null, "y2": null,      // line/arrow only (end point)
           "color": "#dc2626",
+          "severity": "red",           // green | yellow | orange | red | other
           "note": "Timer keeps running while Rules modal is open",
           "comments": [                  // optional: further reviewers' comments
             { "author": "AL", "ts": "2026-10-28T02:10:00.000Z",
@@ -230,6 +231,16 @@ Semantics:
   palette (Tailwind-600 family): `#dc2626 #ea580c #d97706 #ca8a04 #65a30d
   #16a34a #059669 #0d9488 #0891b2 #2563eb #4f46e5 #7c3aed #c026d3 #db2777
   #92400e #1e293b`. Default red `#dc2626`.
+- **severity** — classification chosen from the editor's dropdown, hardcoded
+  in the wrapper: `green` = enhancement, no impact if not addressed
+  (`#16a34a`); `yellow` = minor nitpicks/annoyances, leads to a more coherent
+  and consistent experience if addressed (`#ca8a04`); `orange` = potential
+  sources of confusion that can hamper student learning (`#ea580c`); `red` =
+  severe bugs (`#dc2626`); or `other` = pick any other colour (the full
+  16-colour palette appears; `color` is then free). A fixed severity dictates
+  `color`, so the severity travels in the shape colour on screenshots.
+  Annotations saved before this field existed may omit it — the wrapper and
+  export then infer it from `color` (`other` for non-canonical hexes).
 - `schema: 1` blocks (v0.1, live-DOM anchors) are not auto-migrated; the
   wrapper warns and starts empty.
 
@@ -284,7 +295,7 @@ positions reset to top in the capture. Nested iframes, `<canvas>` pixels,
 and `<video>` frames are not captured. Size: one capture ≈ the app's DOM size, typically
 100–400 KB.
 
-## Limitations (v0.5.3)
+## Limitations (v0.6.0)
 
 - Single-file SPAs only (app rendered via iframe `srcdoc`, so relative
   subresources in the app would break — CDN/absolute URLs are fine).

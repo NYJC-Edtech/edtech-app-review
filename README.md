@@ -16,7 +16,12 @@ snapshots, discuss in per-annotation threads, and track each item as
    changes, or synthetic events reach the app.
 2. **Annotate** — rectangle, ellipse, line, arrow, and text-note tools on top
    of the snapshot. Annotations are pixel coordinates on the capture, so
-   nothing goes stale when the app changes afterwards.
+   nothing goes stale when the app changes afterwards. Each annotation is
+   classified by severity: **green** (enhancement, no impact if not
+   addressed), **yellow** (minor nitpicks/annoyances — a more coherent and
+   consistent experience if addressed), **orange** (potential sources of
+   confusion that can hamper student learning), **red** (severe bugs), or
+   **others** (pick any other colour).
 3. **Persist** — annotations travel inside the app file itself, in one inert
    JSON block, so review data is versioned together with the code it refers
    to. The app file is never modified except for that block.

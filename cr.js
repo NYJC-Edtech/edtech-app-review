@@ -1,4 +1,4 @@
-/* spa-code-review v0.5.3 — cr.js
+/* spa-code-review v0.6.0 — cr.js
  *
  * Design: annotations live on SCREENSHOTS of the app, not on the live
  * DOM. The wrapper renders the app in an iframe (nothing injected into it),
@@ -36,6 +36,35 @@ var CR_PALETTE = [
   ['#0891b2', 'cyan'], ['#2563eb', 'blue'], ['#4f46e5', 'indigo'], ['#7c3aed', 'violet'],
   ['#c026d3', 'fuchsia'], ['#db2777', 'pink'], ['#92400e', 'brown'], ['#1e293b', 'slate']
 ];
+
+// Severity classification: the four fixed levels dictate the annotation
+// colour (their palette hex); "other" frees the full 16-colour palette.
+// Legacy annotations without a severity field derive one from their colour.
+var CR_SEVERITIES = [
+  ['green',  '#16a34a', 'enhancement, no impact if not addressed'],
+  ['yellow', '#ca8a04', 'minor nitpicks/annoyances, leads to more coherent and consistent experience if addressed'],
+  ['orange', '#ea580c', 'potential sources of confusion that can hamper student learning'],
+  ['red',    '#dc2626', 'severe bugs']
+];
+
+function crSeverityHex(name) {
+  for (var i = 0; i < CR_SEVERITIES.length; i++) if (CR_SEVERITIES[i][0] === name) return CR_SEVERITIES[i][1];
+  return null;
+}
+
+function crSeverityFor(color) {
+  for (var i = 0; i < CR_SEVERITIES.length; i++) if (CR_SEVERITIES[i][1] === color) return CR_SEVERITIES[i][0];
+  return 'other';
+}
+
+// stored severity wins ('other' included — a palette hex picked under
+// "others" must not re-derive to a fixed level); fall back to colour
+// (covers pre-severity annotations)
+function crSeverityOf(a) {
+  return a.severity === 'other' || crSeverityHex(a.severity)
+    ? a.severity
+    : crSeverityFor(a.color || CR_DEFAULT_COLOR);
+}
 
 function crParseBlock(text) {
   var m = text.match(CR_BLOCK_RE);
@@ -331,6 +360,7 @@ var Review = {
       x: Math.round(x), y: Math.round(y),
       w: null, h: null, x2: null, y2: null,
       color: S.meta.color,
+      severity: crSeverityFor(S.meta.color),
       note: '',
       author: S.meta.author || '?',
       ts: new Date().toISOString(),
@@ -743,7 +773,7 @@ var Host = {
       pb = null;
     }
     h.data = pb ? pb.json : {
-      schema: CR_SCHEMA, tool: 'spa-code-review 0.5.3', seq: 1,
+      schema: CR_SCHEMA, tool: 'spa-code-review 0.6.0', seq: 1,
       app: null, captures: []
     };
     if (!Array.isArray(h.data.captures)) h.data.captures = [];
@@ -1446,7 +1476,7 @@ var Host = {
     }
     ed.appendChild(thread);
 
-    // status + colour, above the comment input
+    // status + severity, above the comment input
     var row = document.createElement('div');
     row.className = 'ed-row';
     var st = document.createElement('select');
@@ -1456,23 +1486,58 @@ var Host = {
       st.appendChild(o);
     });
     st.addEventListener('change', function () { Review.patch(a.id, { status: st.value }); });
-    var sw = document.createElement('div');
-    sw.className = 'swatches';
-    CR_PALETTE.forEach(function (p) {
-      var b = document.createElement('button');
-      b.className = 'swatch' + ((a.color || CR_DEFAULT_COLOR) === p[0] ? ' active' : '');
-      b.style.background = p[0];
-      b.title = p[1];
-      b.addEventListener('click', function () {
-        Review.patch(a.id, { color: p[0] });
-        Review.S.meta.color = p[0]; // continue drawing in this color
-        Array.prototype.forEach.call(sw.children, function (x) { x.classList.remove('active'); });
-        b.classList.add('active');
-      });
-      sw.appendChild(b);
+    var curSev = crSeverityOf(a);
+    var sev = document.createElement('select');
+    sev.className = 'sev';
+    sev.title = 'Severity classification';
+    CR_SEVERITIES.forEach(function (s) {
+      var o = document.createElement('option');
+      o.value = s[0]; o.textContent = s[0] + ' \u2014 ' + s[2];
+      if (curSev === s[0]) o.selected = true;
+      sev.appendChild(o);
     });
-    row.appendChild(st); row.appendChild(sw);
+    var oth = document.createElement('option');
+    oth.value = 'other'; oth.textContent = 'others \u2014 pick any other colour';
+    if (curSev === 'other') oth.selected = true;
+    sev.appendChild(oth);
+    sev.addEventListener('change', function () {
+      var hex = crSeverityHex(sev.value);
+      if (hex) {
+        Review.patch(a.id, { severity: sev.value, color: hex });
+        Review.S.meta.color = hex; // continue drawing in this color
+      } else {
+        Review.patch(a.id, { severity: 'other' }); // palette appears below
+      }
+    });
+    row.appendChild(st); row.appendChild(sev);
     ed.appendChild(row);
+
+    // full severity text — the closed select clips long labels
+    var sevDesc = document.createElement('div');
+    sevDesc.className = 'sev-desc';
+    CR_SEVERITIES.forEach(function (s) {
+      if (curSev === s[0]) sevDesc.textContent = s[0] + ' \u2014 ' + s[2];
+    });
+    if (curSev === 'other') sevDesc.textContent = 'others \u2014 pick any other colour below';
+    ed.appendChild(sevDesc);
+
+    // free colour palette, only under "others"
+    if (curSev === 'other') {
+      var sw = document.createElement('div');
+      sw.className = 'swatches';
+      CR_PALETTE.forEach(function (p) {
+        var b = document.createElement('button');
+        b.className = 'swatch' + ((a.color || CR_DEFAULT_COLOR) === p[0] ? ' active' : '');
+        b.style.background = p[0];
+        b.title = p[1];
+        b.addEventListener('click', function () {
+          Review.patch(a.id, { color: p[0], severity: 'other' });
+          Review.S.meta.color = p[0]; // continue drawing in this color
+        });
+        sw.appendChild(b);
+      });
+      ed.appendChild(sw);
+    }
 
     // add-comment input (bottom)
     var addRow = document.createElement('div');
@@ -1664,7 +1729,7 @@ var Host = {
       return btoa(bin);
     };
     var data = {
-      tool: 'spa-code-review export 0.5.3', exportedTs: new Date().toISOString(),
+      tool: 'spa-code-review export 0.6.0', exportedTs: new Date().toISOString(),
       appName: h.appName, seq: h.data.seq, captures: h.data.captures,
       appB64: b64(h.rawApp || '')
     };
@@ -1828,6 +1893,16 @@ var CR_EXPORT_ENGINE_SRC = [
 'function capById(id) { for (var i = 0; i < D.captures.length; i++) if (D.captures[i].id === id) return D.captures[i]; return null; }',
 'function annById(c, id) { for (var i = 0; i < c.annotations.length; i++) if (c.annotations[i].id === id) return c.annotations[i]; return null; }',
 'function strokeColor(a) { return a.status === "resolved" ? "#16a34a" : a.status === "wontfix" ? "#64748b" : (a.color || "#dc2626"); }',
+'var SEV_HEX = { green: "#16a34a", yellow: "#ca8a04", orange: "#ea580c", red: "#dc2626" };',
+'var SEV_TXT = { green: "enhancement, no impact if not addressed",',
+'  yellow: "minor nitpicks/annoyances, leads to more coherent and consistent experience if addressed",',
+'  orange: "potential sources of confusion that can hamper student learning",',
+'  red: "severe bugs", other: "custom colour" };',
+'function severityOf(a) {',
+'  if (a.severity === "other" || SEV_HEX[a.severity]) return a.severity;',
+'  for (var k in SEV_HEX) if (SEV_HEX[k] === (a.color || "#dc2626")) return k;',
+'  return "other";',
+'}',
 'function jsonData() { return JSON.stringify(D, null, 1).replace(/</g, "\\\\u003c"); }',
 'function download(name, text) {',
 '  var a = document.createElement("a");',
@@ -1837,7 +1912,7 @@ var CR_EXPORT_ENGINE_SRC = [
 'function splicedApp(hash) {',
 '  var base = appText || "";',
 '  var stripped = base.replace(CAP_RE, "");',
-'  var block = CAP_OPEN + JSON.stringify({ schema: 2, tool: "spa-code-review 0.5.3", seq: D.seq,',
+'  var block = CAP_OPEN + JSON.stringify({ schema: 2, tool: "spa-code-review 0.6.0", seq: D.seq,',
 '    app: { sha256: hash || null, bytes: stripped.length }, captures: D.captures }, null, 2) + CAP_CLOSE;',
 '  var m = stripped.toLowerCase().lastIndexOf("</body>");',
 '  return m >= 0 ? stripped.slice(0, m) + block + "\\n" + stripped.slice(m) : stripped + "\\n" + block + "\\n";',
@@ -2012,6 +2087,10 @@ var CR_EXPORT_ENGINE_SRC = [
 '  var title = document.createElement("div"); title.className = "ed-title";',
 '  title.textContent = a.id + " \\u00b7 on " + c.id + " \\u00b7 by " + (a.author || "?");',
 '  ed.appendChild(title);',
+'  var svKey = severityOf(a);',
+'  var sevLine = document.createElement("div"); sevLine.className = "c-meta";',
+'  sevLine.textContent = "severity: " + svKey + (SEV_TXT[svKey] ? " \\u00b7 " + SEV_TXT[svKey] : "");',
+'  ed.appendChild(sevLine);',
 '  var thread = document.createElement("div"); thread.className = "thread";',
 '  var mkEntry = function (author, ts, text, isLead) {',
 '    var e = document.createElement("div"); e.className = "comment" + (isLead ? " lead" : "");',

@@ -152,6 +152,8 @@
   #panel-editor .ed-row { display: flex; gap: 8px; align-items: center; }
   #panel-editor select, #panel-editor input[type=color] { background: #0b1220; color: var(--fg);
                            border: 1px solid #475569; border-radius: 6px; padding: 4px; font: inherit; }
+  #panel-editor select.sev { flex: 1 1 auto; min-width: 0; }
+  #panel-editor .sev-desc { font-size: 11px; line-height: 1.4; color: var(--muted); }
   #panel-editor .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; flex: 1; }
   #panel-editor .swatch { height: 20px; border-radius: 4px; border: 2px solid #334155;
                           cursor: pointer; padding: 0; min-width: 0; }
@@ -229,6 +231,6 @@
 <div id="toast" hidden></div>
 
 <script>window.__CR_HOST__ = true;</script>
-<script src="cr.js?v=0.5.3" defer></script>
+<script src="cr.js?v=0.6.0" defer></script>
 </body>
 </html>
