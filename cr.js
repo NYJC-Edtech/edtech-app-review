@@ -13,7 +13,7 @@
  *   { ...pure JSON, pretty-printed... }
  *   +cr--></script>
  *
- * This file now runs in ONE context only: the wrapper (cr.html).
+ * This file now runs in ONE context only: the wrapper (index.html).
  */
 
 'use strict';
@@ -714,7 +714,7 @@ var Host = {
   fetchApp: async function (app) {
     var h = this;
     // resolve ?app= against this file's URL: absolute and root-relative paths
-    // keep their meaning, bare paths are relative to cr.html — which also
+    // keep their meaning, bare paths are relative to index.html — which also
     // works on GitHub Pages project sites, where the site root is /<repo>/
     var url = app;
     try { url = new URL(app, location.href).href; } catch (e) { }

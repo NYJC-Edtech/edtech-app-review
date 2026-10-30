@@ -29,16 +29,16 @@ for recovery; saving verifies the file's identity by SHA-256 before writing.
 
 ## Running
 
-**Published:** <https://nyjc-edtech.github.io/edtech-app-review/cr.html>
+**Published:** <https://nyjc-edtech.github.io/edtech-app-review/>
 
 - **Open an app** — click *Open app HTML…* or drag-drop an `.html` file.
   Opening via the picker attaches the file so **Save annotations** rewrites
   it in place; without a picker handle, Save downloads a spliced copy.
 - **Local server** (enables `?app=`):
   `python -m http.server 8642 --directory <this repo>` then open
-  `http://localhost:8642/cr.html?app=sample-app.html` (path relative to
-  `cr.html`; `sample-app.html` is a bundled demo).
-- **file://** — double-click `cr.html` in Chromium. Capture and saving work;
+  `http://localhost:8642/index.html?app=sample-app.html` (path relative to
+  `index.html`; `sample-app.html` is a bundled demo).
+- **file://** — double-click `index.html` in Chromium. Capture and saving work;
   direct in-place saving needs the picker (see above).
 
 Works best in Chromium browsers (uses the File System Access API for

@@ -42,7 +42,7 @@ touching the app's code or runtime:
 
 Files in this folder (the tool is fully decoupled from any app under review):
 
-- `cr.html` — the wrapper. Columns: **Captures** (left), **Review** panel
+- `index.html` — the wrapper. Columns: **Captures** (left), **Review** panel
   (annotations + editor), **app/snapshot view** (right). Header: Open /
   Reload / Clear on the left; Save annotations / Export code review on the
   right.
@@ -109,22 +109,22 @@ escaped as `\u003c` (valid JSON, parser-inert).
 
 ## Running
 
-Published: **https://nyjc-edtech.github.io/edtech-app-review/cr.html**
+Published: **https://nyjc-edtech.github.io/edtech-app-review/**
 
 Local server (works everywhere, enables `?app=`):
 
 ```
 python -m http.server 8642 --directory <this repo>
-# open http://localhost:8642/cr.html
-# dev/agent mode: ?app=<path relative to cr.html>
-#   cr.html?app=sample-app.html   (bundled demo)
+# open http://localhost:8642/index.html
+# dev/agent mode: ?app=<path relative to index.html>
+#   index.html?app=sample-app.html   (bundled demo)
 ```
 
-`?app=` paths resolve against `cr.html`'s own URL (absolute and root-relative
+`?app=` paths resolve against `index.html`'s own URL (absolute and root-relative
 paths keep their usual meaning), so the same form works locally and on the
 GitHub Pages project site.
 
-Also works from `file://` (double-click `cr.html`, use Open/drag-drop) in
+Also works from `file://` (double-click `index.html`, use Open/drag-drop) in
 Chromium; captures re-render with the same CDN caveats as above.
 
 **Direct saving on `file://`:** always attach the file via **Open app
