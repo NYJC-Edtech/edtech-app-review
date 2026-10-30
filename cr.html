@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPA Code Review</title>
+<style>
+  :root { --bg:#0f172a; --bg2:#1e293b; --fg:#e2e8f0; --muted:#94a3b8; --accent:#2563eb; --ok:#16a34a; --warn:#b45309; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: var(--bg); color: var(--fg);
+         font: 13px/1.4 system-ui, "Segoe UI", sans-serif; }
+
+  header { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+           background: var(--bg2); border-bottom: 1px solid #334155; flex: none; }
+  header .title { font-weight: 700; color: var(--muted); margin-right: 4px; }
+  button { background: #334155; color: var(--fg); border: 1px solid #475569;
+           border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  button:hover { background: #475569; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.saving { position: relative; pointer-events: none; color: transparent !important; }
+  button.saving::after { content: ''; position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+                         margin: auto; width: 13px; height: 13px; border: 2px solid #fff;
+                         border-top-color: transparent; border-radius: 50%;
+                         animation: cr-spin .7s linear infinite; }
+  @keyframes cr-spin { to { transform: rotate(360deg); } }
+  button.primary { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { background: #1d4ed8; }
+  #btn-save { min-width: 126px; text-align: center; white-space: nowrap; }
+  button.danger { background: #7f1d1d; border-color: #991b1b; width: 100%; margin-top: 8px; }
+  .chip { background: #0b1220; border: 1px solid #334155; border-radius: 999px;
+          padding: 3px 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .chip.ok { color: #4ade80; border-color: #14532d; }
+  .chip.warn { color: #fbbf24; border-color: #78350f; }
+  .spacer { flex: 1; }
+  .author-wrap { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+  .author-wrap input { width: 32ch; background: #0b1220; color: var(--fg);
+                       border: 1px solid #475569; border-radius: 6px; padding: 4px 6px; font: inherit; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #stage { flex: 1; position: relative; background: #fff; min-width: 0; display: flex; flex-direction: column; }
+  #stage.drag { outline: 3px dashed var(--accent); outline-offset: -6px; }
+
+  #caps { width: 210px; flex: none; background: var(--bg2); border-right: 1px solid #334155;
+          display: flex; flex-direction: column; min-height: 0; }
+  #caps h2 { margin: 0; padding: 10px 12px 6px; font-size: 12px; text-transform: uppercase;
+             letter-spacing: .06em; color: var(--muted); }
+  #caps-list { flex: 1; overflow-y: auto; padding: 0 8px 10px; }
+  #caps-list .cap-item:focus-visible, #panel-list .item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+  #count-chip.cap-summary { padding: 0 12px 8px; font-size: 11px; color: var(--muted);
+                            background: transparent; border: 0; border-radius: 0; }
+  #caps-list .cap-item { position: relative; padding: 6px 8px 6px 10px; border-radius: 7px; margin-bottom: 2px;
+                         cursor: pointer; border: 1px solid transparent; }
+  #caps-list .cap-item:hover { background: #334155; }
+  #caps-list .cap-item.active { background: #1d3160; border-color: var(--accent); }
+  #caps-list .cap-item.dragging { opacity: .35; }
+  #caps-list .cap-item.drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+  #caps-list .cap-item.drop-after { box-shadow: 0 2px 0 0 var(--accent); }
+  #caps-list .cap-live { color: var(--muted); margin-bottom: 6px; }
+  #caps-list .cap-l1 { display: flex; align-items: center; gap: 6px; }
+  #caps-list .cap-id { color: #fff; font: 700 10px/1 ui-monospace, monospace; background: #475569;
+                       border-radius: 999px; padding: 3px 6px; }
+  #caps-list .cap-item.active .cap-id { background: var(--accent); }
+  #caps-list .cap-open { font-size: 11px; color: var(--muted); }
+  #caps-list .cap-del { margin-left: auto; color: var(--muted); padding: 0 4px; border-radius: 4px;
+                        background: transparent; border: 0; font-size: 13px; }
+  #caps-list .cap-del:hover { color: #fca5a5; background: #450a0a; }
+  #caps-list .cap-l2 { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis;
+                       white-space: nowrap; margin-top: 2px; }
+  #caps-list .cap-item.active .cap-l2 { color: #cbd5e1; }
+  #caps-list .cap-move { display: none; align-items: center; }
+  #caps-list .cap-item:hover .cap-move { display: inline-flex; }
+  #caps-list .cap-move button { background: transparent; border: 0; color: var(--muted); font-size: 10px;
+                                padding: 1px 3px; cursor: pointer; }
+  #caps-list .cap-move button:hover { color: var(--fg); }
+
+  #live-view { flex: 1; position: relative; min-height: 0; }
+  #app-frame { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+  #drop-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+               color: var(--muted); font-size: 15px; background: #f8fafc; text-align: center; padding: 20px; }
+
+  #review-view { flex: 1; min-height: 0; overflow: auto; background: #e2e8f0; padding: 12px; }
+  #review-canvas { position: relative; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,.25); background: #fff; }
+  #review-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #review-frame { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+  #review-svg { position: absolute; inset: 0; touch-action: none; }
+  @keyframes cr-shrink { from { opacity: 0; transform: scale(1.18); } to { opacity: .35; transform: scale(1); } }
+  @keyframes cr-shrink-ring { from { opacity: 0; transform: scale(1.18); } to { opacity: 1; transform: scale(1); } }
+  #review-svg .cr-halo { opacity: .35; transform-box: fill-box; transform-origin: center;
+                         animation: cr-shrink .2s ease-out; }
+  #review-svg .cr-selring { transform-box: fill-box; transform-origin: center;
+                            animation: cr-shrink-ring .2s ease-out; }
+
+  .toolbar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+             display: flex; gap: 4px; padding: 6px; border-radius: 10px;
+             background: rgba(15,23,42,.92); border: 1px solid #475569; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  .toolbar button { background: transparent; border: 1px solid transparent; border-radius: 7px;
+                    min-width: 36px; padding: 5px 8px; font-size: 15px; color: var(--fg); }
+  .toolbar button:hover { background: #334155; }
+  .toolbar button.active { background: var(--accent); border-color: #60a5fa; }
+  .toolbar .hint { color: var(--muted); font-size: 12px; align-self: center; padding: 0 8px; }
+  .toolbar .sep { width: 1px; background: #475569; margin: 4px 2px; }
+
+  #panel { width: 300px; flex: none; background: var(--bg2); border-right: 1px solid #334155;
+           display: flex; flex-direction: column; min-height: 0; }
+  #panel h2 { margin: 0; padding: 10px 12px 6px; font-size: 12px; text-transform: uppercase;
+              letter-spacing: .06em; color: var(--muted); }
+  #capture-label-wrap { padding: 0 12px 6px; }
+  #capture-label { width: 100%; background: #0b1220; color: var(--fg); border: 1px solid #475569;
+                   border-radius: 6px; padding: 5px 8px; font: inherit; }
+  #panel-list { flex: 1 1 auto; overflow-y: auto; padding: 0 8px 8px; min-height: 80px; }
+  #panel-list .item { display: flex; align-items: flex-start; gap: 6px; padding: 8px; border-radius: 7px;
+                      cursor: pointer; border: 1px solid transparent; font-size: 12px; }
+  #panel-list .item:hover { background: #334155; }
+  #panel-list .item.sel { background: #1d3160; border-color: var(--accent); }
+  #panel-list .item.done .note { text-decoration: line-through; color: var(--muted); }
+  #panel-list .badge { flex: none; color: #fff; font: 700 10px/1 ui-monospace, monospace;
+                       border-radius: 999px; padding: 3px 6px; }
+  #panel-list .note { color: #cbd5e1; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #panel-list .ccount { margin-left: auto; flex: none; font-size: 11px; color: var(--muted); }
+  #panel-editor { flex: 0 0 auto; max-height: 58%; border-top: 1px solid #334155; padding: 10px 12px;
+                  overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  #panel-editor .empty { color: var(--muted); font-size: 12px; }
+  #panel-editor .ed-head { display: flex; align-items: center; gap: 6px; }
+  #panel-editor .ed-head .ed-title { flex: 1; }
+  #panel-editor .ed-del { background: transparent; border: 0; color: #ef4444;
+                          cursor: pointer; padding: 3px 7px; border-radius: 6px; flex: none;
+                          display: inline-flex; align-items: center; }
+  #panel-editor .ed-del:hover { background: #450a0a; color: #f87171; }
+  #panel-editor .ed-title { font-weight: 700; }
+  #panel-editor textarea { background: #0b1220; color: var(--fg); border: 1px solid #475569;
+                           border-radius: 7px; padding: 6px 8px; font: inherit; resize: vertical; }
+  #panel-editor .thread { flex: 0 1 auto; min-height: 40px; display: flex; flex-direction: column; gap: 6px; }
+  #panel-editor .comment { background: #0b1220; border: 1px solid #334155; border-radius: 7px;
+                           padding: 6px 8px; }
+  #panel-editor .comment.lead { border-color: #475569; }
+  #panel-editor .c-meta { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+  #panel-editor .c-body { font-size: 12px; line-height: 1.45; white-space: pre-wrap;
+                          overflow-wrap: anywhere; padding: 2px 5px; border: 1px solid transparent; }
+  #panel-editor .c-body.muted { color: var(--muted); font-style: italic; }
+  #panel-editor .comment.lead .c-body { cursor: text; }
+  #panel-editor .comment textarea.edit-lead {
+    display: block; width: 100%; box-sizing: border-box; background: transparent;
+    color: var(--fg); border: 1px solid var(--accent); border-radius: 6px;
+    padding: 2px 5px; font-size: 12px; line-height: 1.45; font-family: inherit; resize: none;
+    overflow: hidden; overflow-wrap: anywhere; }
+  #panel-editor .add-row { display: flex; gap: 6px; align-items: flex-end; }
+  #panel-editor .add-row textarea { flex: 1; }
+  #panel-editor .add-cmt { background: var(--accent); border-color: var(--accent); font-weight: 600;
+                           flex: none; }
+  #panel-editor .ed-row { display: flex; gap: 8px; align-items: center; }
+  #panel-editor select, #panel-editor input[type=color] { background: #0b1220; color: var(--fg);
+                           border: 1px solid #475569; border-radius: 6px; padding: 4px; font: inherit; }
+  #panel-editor .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; flex: 1; }
+  #panel-editor .swatch { height: 20px; border-radius: 4px; border: 2px solid #334155;
+                          cursor: pointer; padding: 0; min-width: 0; }
+  #panel-editor .swatch:hover { border-color: #94a3b8; }
+  #panel-editor .swatch.active { border-color: #fff; box-shadow: 0 0 0 1.5px var(--accent); }
+
+  #toast { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%);
+           background: #0b1220; color: var(--fg); border: 1px solid #475569; border-radius: 8px;
+           padding: 8px 14px; box-shadow: 0 4px 16px rgba(0,0,0,.5); max-width: 70vw; z-index: 10; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="title">SPA Code Review</span>
+  <button id="btn-open">Open app HTML&hellip;</button>
+  <button id="btn-reload" title="Re-read the app file from disk">Reload</button>
+  <button id="btn-clear" title="Clear all captures/annotations for this file (local stash + working set); Save afterwards to strip them from the app file">Clear</button>
+  <span id="file-chip" class="chip">no file</span>
+  <span class="spacer"></span>
+  <span id="hash-chip" class="chip">&ndash;</span>
+  <label class="author-wrap">author <input id="author-input" placeholder="you" maxlength="32"></label>
+  <button id="btn-copy" title="Copy annotation JSON to clipboard">Copy JSON</button>
+  <button id="btn-save" class="primary" title="Splice the annotation JSON into the app file&rsquo;s annotation block">Save annotations</button>
+  <button id="btn-export" class="primary" title="Download a self-contained code-review HTML: review UI + app file + captures + annotations">Export code review</button>
+</header>
+
+<main>
+  <aside id="caps" hidden>
+    <h2>Captures</h2>
+    <div id="count-chip" class="cap-summary">0 captures</div>
+    <div id="caps-list"></div>
+  </aside>
+
+  <aside id="panel" hidden>
+    <h2>Review</h2>
+    <div id="capture-label-wrap" hidden><input id="capture-label" placeholder="label"></div>
+    <div id="panel-list"></div>
+    <div id="panel-editor"></div>
+  </aside>
+
+  <div id="stage">
+    <div id="live-view">
+      <iframe id="app-frame" title="app under review"></iframe>
+      <div id="drop-hint">Drop the app&rsquo;s .html file here, or click Open.</div>
+      <div id="toolbar-live" class="toolbar" hidden>
+        <button id="btn-capture" title="Capture the current app state (Ctrl+Shift+F)">&#128247; Capture</button>
+        <span class="hint">Ctrl+Shift+F &mdash; capture without disturbing the app</span>
+      </div>
+    </div>
+
+    <div id="review-view" hidden>
+      <div id="review-canvas">
+        <div id="review-scale">
+          <iframe id="review-frame" title="captured app state" sandbox="allow-same-origin"></iframe>
+        </div>
+        <svg id="review-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+    <div id="toolbar-review" class="toolbar" hidden>
+      <button data-tool="select" class="active" title="Select / move / resize annotations">&target;</button>
+      <button data-tool="rect" title="Rectangle">&#9635;</button>
+      <button data-tool="ellipse" title="Ellipse">&#9711;</button>
+      <button data-tool="line" title="Line">&#9585;</button>
+      <button data-tool="arrow" title="Arrow">&#8599;</button>
+      <button data-tool="text" title="Text note">T</button>
+      <span class="sep"></span>
+      <button id="btn-fit" title="Fit to window width">fit</button>
+      <button id="btn-natural" title="Show at 100% pixel size">1:1</button>
+    </div>
+  </div>
+</main>
+
+<div id="toast" hidden></div>
+
+<script>window.__CR_HOST__ = true;</script>
+<script src="cr.js?v=0.5.3" defer></script>
+</body>
+</html>

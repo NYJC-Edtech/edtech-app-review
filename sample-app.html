@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sample app</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 40px; background: #f8fafc; }
+  button { font: inherit; padding: 8px 16px; }
+  #modal { display: none; margin-top: 16px; padding: 16px; background: #fff;
+           border: 1px solid #cbd5e1; border-radius: 8px; width: 280px; }
+  #modal.open { display: block; }
+</style>
+</head>
+<body>
+<h1>Sample app under review</h1>
+<p>Checkbox: <input type="checkbox" id="cb"> <button id="show">Show modal</button></p>
+<div id="modal">Modal is open <input id="txt" placeholder="type here"></div>
+<script>
+  document.getElementById('show').addEventListener('click', function () {
+    document.getElementById('modal').classList.add('open');
+  });
+</script>
+</body>
+</html>
